@@ -238,6 +238,72 @@ function GrowthRateChart({ data }) {
   );
 }
 
+/* ── GDP per capita chart ─────────────────────────────── */
+function GDPChart({ data }) {
+  const W = 640, H = 194;
+  const PAD = { top: 24, right: 20, bottom: 36, left: 72 };
+  const iW  = W - PAD.left - PAD.right;
+  const iH  = H - PAD.top  - PAD.bottom;
+
+  const pts = useMemo(() => data.filter(p => p.gdp != null), [data]);
+  if (pts.length < 2) return null;
+
+  const vals = pts.map(p => p.gdp);
+  const yTks = niceTicks(0, Math.max(...vals));
+  const yMin = yTks[0], yMax = yTks[yTks.length - 1];
+  const xMin = pts[0].year, xMax = pts[pts.length - 1].year;
+
+  const toX = y => PAD.left + ((y - xMin) / (xMax - xMin)) * iW;
+  const toY = v => PAD.top  + (1 - (v - yMin) / (yMax - yMin)) * iH;
+
+  const line = pts.map((p, i) => `${i ? "L" : "M"}${toX(p.year).toFixed(1)},${toY(p.gdp).toFixed(1)}`).join(" ");
+  const area = line
+    + ` L${toX(xMax).toFixed(1)},${(PAD.top + iH).toFixed(1)}`
+    + ` L${toX(xMin).toFixed(1)},${(PAD.top + iH).toFixed(1)} Z`;
+
+  const firstDecade = Math.ceil(xMin / 10) * 10;
+  const xTks = [];
+  for (let y = firstDecade; y <= xMax; y += 10) {
+    if (xMax - y > 0 && xMax - y < 6) continue;
+    xTks.push(y);
+  }
+  if (xTks[xTks.length - 1] !== xMax) xTks.push(xMax);
+
+  const fmt = v => v >= 1000 ? `$${Math.round(v / 1000)}k` : `$${Math.round(v)}`;
+
+  return (
+    <div className="gp-wm-chart">
+      <div className="gp-wm-chart-header">
+        <div className="gp-wm-chart-title">Guyana GDP per Capita (USD)</div>
+        <div className="gp-wm-chart-legend">
+          <span className="gp-wm-legend-line" style={{ background: "#15803d" }} />
+          GDP per Capita
+        </div>
+      </div>
+      <svg viewBox={`0 0 ${W} ${H}`} className="gp-wm-chart-svg">
+        <defs>
+          <clipPath id="gdpClip">
+            <rect x={PAD.left} y={PAD.top} width={iW} height={iH} />
+          </clipPath>
+        </defs>
+        <rect x={PAD.left} y={PAD.top} width={iW} height={iH} fill="#f9f7f4" />
+        {yTks.map((t, i) => (
+          <g key={i}>
+            <line x1={PAD.left} y1={toY(t)} x2={PAD.left + iW} y2={toY(t)} stroke="#ddd5c8" strokeWidth="1" />
+            <text x={PAD.left - 6} y={toY(t) + 4} textAnchor="end" className="gp-axis-label">{fmt(t)}</text>
+          </g>
+        ))}
+        {xTks.map((y, i) => (
+          <text key={i} x={toX(y)} y={PAD.top + iH + 18} textAnchor="middle" className="gp-axis-label">{Math.round(y)}</text>
+        ))}
+        <path d={area} fill="rgba(21,128,61,0.10)" clipPath="url(#gdpClip)" />
+        <path d={line} fill="none" stroke="#15803d" strokeWidth="2.2" strokeLinejoin="round" strokeLinecap="round" clipPath="url(#gdpClip)" />
+        <rect x={PAD.left} y={PAD.top} width={iW} height={iH} fill="none" stroke="#c9bfb0" strokeWidth="1" />
+      </svg>
+    </div>
+  );
+}
+
 /* ── Historical table ─────────────────────────────────── */
 const DISPLAY_YEARS = new Set([
   2026, 2025, 2024, 2023, 2022, 2020, 2015,
@@ -411,6 +477,120 @@ function CitiesTable() {
   );
 }
 
+/* ── Population by region ─────────────────────────────── */
+const GUYANA_REGIONS = [
+  { id: "R4",  name: "Demerara-Mahaica",                pop: 310320 },
+  { id: "R6",  name: "East Berbice-Corentyne",          pop: 109431 },
+  { id: "R3",  name: "Essequibo Islands-West Demerara", pop: 107416 },
+  { id: "R5",  name: "Mahaica-Berbice",                 pop:  49253 },
+  { id: "R2",  name: "Pomeroon-Supenaam",               pop:  46728 },
+  { id: "R10", name: "Upper Demerara-Berbice",           pop:  39453 },
+  { id: "R1",  name: "Barima-Waini",                    pop:  26942 },
+  { id: "R7",  name: "Cuyuni-Mazaruni",                 pop:  19953 },
+  { id: "R9",  name: "Upper Takutu-Upper Essequibo",    pop:  19387 },
+  { id: "R8",  name: "Potaro-Siparuni",                 pop:  10195 },
+];
+const REGIONS_TOTAL = GUYANA_REGIONS.reduce((s, r) => s + r.pop, 0);
+
+function RegionsSection() {
+  const maxPop = GUYANA_REGIONS[0].pop;
+  return (
+    <div className="gp-table-section">
+      <div className="gp-table-section-title">Population by Region</div>
+      <p className="gp-table-note">Source: Guyana 2012 National Census. Region 4 contains Georgetown and accounts for the majority of the population.</p>
+      <div className="gp-table-scroll">
+        <table className="gp-table">
+          <thead>
+            <tr>
+              <th style={{ textAlign: "left" }}>Region</th>
+              <th style={{ minWidth: 140 }}></th>
+              <th>Population</th>
+              <th>Share</th>
+            </tr>
+          </thead>
+          <tbody>
+            {GUYANA_REGIONS.map(row => (
+              <tr key={row.id}>
+                <td style={{ textAlign: "left", whiteSpace: "normal", minWidth: 180 }}>{row.name}</td>
+                <td style={{ paddingRight: 16 }}>
+                  <div style={{ height: 8, borderRadius: 4, background: "#e5d9c8", position: "relative" }}>
+                    <div style={{
+                      position: "absolute", left: 0, top: 0, bottom: 0,
+                      width: `${(row.pop / maxPop) * 100}%`,
+                      background: "#1d4ed8", borderRadius: 4,
+                    }} />
+                  </div>
+                </td>
+                <td>{row.pop.toLocaleString()}</td>
+                <td>{((row.pop / REGIONS_TOTAL) * 100).toFixed(1)}%</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+/* ── Diaspora section ─────────────────────────────────── */
+function DiasporaSection() {
+  return (
+    <div className="gp-table-section">
+      <div className="gp-table-section-title">Guyana Diaspora</div>
+      <div className="gp-info-box" style={{ marginBottom: "0.5rem" }}>
+        <InfoRow label="Estimated Guyanese living abroad" value="~500,000" />
+        <InfoRow label="Main destinations"                value="USA, Canada, UK, Caribbean" />
+        <InfoRow label="Diaspora vs. resident population" value="~60% of resident population" />
+        <InfoRow label="Estimated net emigration (annual)" value="−10,000 per year" />
+      </div>
+      <p className="gp-table-note">
+        Guyana has one of the highest emigration rates in the Western Hemisphere. Figures are estimates based on IOM, World Bank, and national survey data.
+      </p>
+    </div>
+  );
+}
+
+/* ── Country comparison ───────────────────────────────── */
+const COMPARISON_COUNTRIES = [
+  { flag: "🇬🇾", name: "Guyana",              pop: 831087,   growth:  0.99, lifeExp: 67.1, highlight: true },
+  { flag: "🇸🇷", name: "Suriname",            pop: 618040,   growth:  0.80, lifeExp: 71.7 },
+  { flag: "🇹🇹", name: "Trinidad & Tobago",  pop: 1367558,  growth:  0.30, lifeExp: 73.5 },
+  { flag: "🇧🇧", name: "Barbados",            pop: 281635,   growth:  0.10, lifeExp: 79.2 },
+];
+
+function CountryComparisonSection() {
+  return (
+    <div className="gp-table-section">
+      <div className="gp-table-section-title">Caribbean Comparison</div>
+      <p className="gp-table-note">Guyana vs. neighbouring Caribbean nations. Population and growth rate from World Bank (latest available). Life expectancy at birth, both sexes.</p>
+      <div className="gp-table-scroll">
+        <table className="gp-table">
+          <thead>
+            <tr>
+              <th style={{ textAlign: "left" }}>Country</th>
+              <th>Population</th>
+              <th>Annual Growth</th>
+              <th>Life Expectancy</th>
+            </tr>
+          </thead>
+          <tbody>
+            {COMPARISON_COUNTRIES.map(c => (
+              <tr key={c.name} className={c.highlight ? "row-current" : ""}>
+                <td style={{ textAlign: "left" }}>
+                  <span style={{ marginRight: 8 }}>{c.flag}</span>{c.name}
+                </td>
+                <td>{c.pop.toLocaleString()}</td>
+                <td className={c.growth > 0.5 ? "td-pos" : ""}>{c.growth.toFixed(2)}%</td>
+                <td>{c.lifeExp.toFixed(1)} yrs</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 /* ── Notes & Definitions ──────────────────────────────── */
 function NotesSection() {
   const curYear = new Date().getFullYear();
@@ -477,6 +657,8 @@ export default function GuyanaPopulation() {
   const [baseDate, setBaseDate] = useState(new Date("2024-01-01T00:00:00Z"));
   const [dataYear,    setDataYear]    = useState("2024 estimate");
   const [histData,    setHistData]    = useState([]);
+  const [gdpData,     setGdpData]     = useState([]);
+  const [copied,      setCopied]      = useState(false);
   const [lifeExp,     setLifeExp]     = useState(null);
   const [infantMort,  setInfantMort]  = useState(null);
   const [under5Mort,  setUnder5Mort]  = useState(null);
@@ -521,6 +703,20 @@ export default function GuyanaPopulation() {
     fetchIndicator("SH.DYN.MORT").then(v => { if (v) setUnder5Mort(v); }).catch(() => {});
   }, []);
 
+  // Fetch GDP per capita history
+  useEffect(() => {
+    fetch(`${WB}/NY.GDP.PCAP.CD?format=json&per_page=100`)
+      .then(r => r.json())
+      .then(data => {
+        const sorted = data[1]
+          .filter(e => e.value !== null)
+          .map(e => ({ year: parseInt(e.date, 10), gdp: e.value }))
+          .sort((a, b) => a.year - b.year);
+        setGdpData(sorted);
+      })
+      .catch(() => {});
+  }, []);
+
   const ratesRef    = useRef(getRates(basePop));
   const baseDateRef = useRef(baseDate);
   const basePopRef  = useRef(basePop);
@@ -539,6 +735,19 @@ export default function GuyanaPopulation() {
     }, 100);
     return () => clearInterval(id);
   }, []);
+
+  const handleShare = () => {
+    const url  = "https://guyanapopulation.netlify.app";
+    const text = "Guyana Live Population Counter — real-time births, deaths & historical data";
+    if (navigator.share) {
+      navigator.share({ title: "Guyana Population (Live)", text, url }).catch(() => {});
+    } else {
+      navigator.clipboard.writeText(url).then(() => {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      }).catch(() => {});
+    }
+  };
 
   const whole   = Math.floor(popExact);
   const decimal = (popExact - whole).toFixed(2).slice(1);
@@ -560,6 +769,23 @@ export default function GuyanaPopulation() {
             <span className="gp-live-dot" />
             LIVE
           </div>
+          <button className="gp-share-btn" onClick={handleShare} aria-label="Share this page">
+            {copied ? (
+              <>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="20 6 9 17 4 12"/>
+                </svg>
+                Copied!
+              </>
+            ) : (
+              <>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/>
+                </svg>
+                Share
+              </>
+            )}
+          </button>
         </div>
 
         {/* Counter */}
@@ -571,6 +797,7 @@ export default function GuyanaPopulation() {
             <span className="gp-decimal">{decimal}</span>
           </div>
           <p className="gp-counter-label">Current population of Guyana</p>
+          <p className="gp-data-freshness">Data: {dataYear} · updated in real time</p>
         </div>
 
         {/* Today's stats */}
@@ -584,6 +811,7 @@ export default function GuyanaPopulation() {
         {/* Charts */}
         <PopLineChart data={histData} />
         <GrowthRateChart data={histData} />
+        <GDPChart data={gdpData} />
 
         {/* Historical table */}
         <HistoricalTable data={histData} currentPop={whole} />
@@ -593,6 +821,12 @@ export default function GuyanaPopulation() {
 
         {/* Cities */}
         <CitiesTable />
+
+        {/* Population by region */}
+        <RegionsSection />
+
+        {/* Diaspora */}
+        <DiasporaSection />
 
         {/* Key facts */}
         <h2 className="gp-section-title">Key facts</h2>
@@ -604,6 +838,9 @@ export default function GuyanaPopulation() {
           <InfoRow label="Land area"           value="214,969 km²"    />
           <InfoRow label="Capital"             value="Georgetown"      />
         </div>
+
+        {/* Country comparison */}
+        <CountryComparisonSection />
 
         {/* Notes */}
         <NotesSection />
