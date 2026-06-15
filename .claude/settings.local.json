@@ -5,7 +5,11 @@
       "mcp__Claude_Preview__preview_start",
       "mcp__visualize__show_widget",
       "Bash(npm run *)",
-      "Bash(git push *)"
+      "Bash(git push *)",
+      "Bash(Copy-Item \"C:\\\\Users\\\\User\\\\Downloads\\\\google442383ceabced960 \\(2\\).html\" \"C:\\\\Users\\\\User\\\\Documents\\\\Projects\\\\guyana-population\\\\public\\\\google442383ceabced960.html\")",
+      "Bash(cp \"C:\\\\Users\\\\User\\\\Downloads\\\\google442383ceabced960 \\(2\\).html\" \"C:\\\\Users\\\\User\\\\Documents\\\\Projects\\\\guyana-population\\\\public\\\\google442383ceabced960.html\")",
+      "Bash(git add *)",
+      "Bash(git commit *)"
     ]
   }
 }
