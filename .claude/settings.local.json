@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__visualize__read_me",
+      "mcp__Claude_Preview__preview_start",
+      "mcp__visualize__show_widget",
+      "Bash(npm run *)"
+    ]
+  }
+}
