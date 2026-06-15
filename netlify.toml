@@ -1,0 +1,9 @@
+[[headers]]
+  for = "/*.png"
+  [headers.values]
+    Content-Type = "image/png"
+
+[[headers]]
+  for = "/*.svg"
+  [headers.values]
+    Content-Type = "image/svg+xml"
